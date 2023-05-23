@@ -29,7 +29,7 @@ pub(crate) fn explore_calls(
     command: CallsSubcommand,
     metadata: &Metadata,
     pallet_metadata: &PalletMetadata<PortableForm>,
-) -> color_eyre::Result<()> {
+) -> color_eyre::Result<String> {
     let pallet_name = pallet_metadata.name.as_str();
 
     // get the enum that stores the possible calls:
@@ -39,8 +39,7 @@ pub(crate) fn explore_calls(
     // if no call specified, show user the calls to choose from:
     let Some(call_name) = command.call else {
         let available_calls = print_available_calls(calls_enum_type_def, pallet_name);
-        println!("Usage:\n    subxt explore {pallet_name} calls <CALL>\n        explore a specific call within this pallet\n\n{available_calls}", );
-        return Ok(());
+        return Ok(format!("Usage:\n    subxt explore {pallet_name} calls <CALL>\n        explore a specific call within this pallet\n\n{available_calls}", ));
     };
 
     // if specified call is wrong, show user the calls to choose from (but this time as an error):
@@ -64,14 +63,14 @@ pub(crate) fn explore_calls(
             "SCALE_VALUE",
         )?;
         type_examples = with_indent(type_examples, 4);
-        let mut output = String::new();
-        write!(output, "Usage:\n    subxt explore {pallet_name} calls {call_name} <SCALE_VALUE>\n        construct the call by providing a valid argument\n\n")?;
+        let mut output = "Usage:".to_string();
+        writeln!(output, "    subxt explore {pallet_name} calls {call_name} <SCALE_VALUE>")?;
+        writeln!(output, "        construct the call by providing a valid argument\n\n")?;
         write!(
             output,
             "The call expect expects a <SCALE_VALUE> with this shape:\n{type_description}\n\n{}\n\nYou may need to surround the value in single quotes when providing it as an argument."
             , &type_examples[4..])?;
-        println!("{output}");
-        return Ok(());
+        return Ok(output);
     }
 
     // parse scale_value from trailing arguments and try to create an unsigned extrinsic with it:
@@ -81,9 +80,7 @@ pub(crate) fn explore_calls(
     let payload = tx::dynamic(pallet_name, call_name, value_as_composite);
     let unsigned_extrinsic = offline_client.tx().create_unsigned(&payload)?;
     let hex_bytes = format!("0x{}", hex::encode(unsigned_extrinsic.encoded()));
-    println!("Encoded call data:\n    {hex_bytes}");
-
-    Ok(())
+    Ok(format!("Encoded call data:\n    {hex_bytes}"))
 }
 
 fn print_available_calls(pallet_calls: &TypeDefVariant<PortableForm>, pallet_name: &str) -> String {

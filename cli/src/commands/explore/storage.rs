@@ -1,6 +1,6 @@
 use crate::utils::type_description::print_type_description;
 use crate::utils::type_example::print_type_examples;
-use crate::utils::{print_docs_with_indent, with_indent};
+use crate::utils::{print_first_paragraph_with_indent, with_indent};
 use clap::Args;
 
 use std::fmt::Write;
@@ -26,21 +26,19 @@ pub(crate) async fn explore_storage(
     metadata: &Metadata,
     pallet_metadata: &PalletMetadata<PortableForm>,
     custom_online_client_url: Option<String>,
-) -> color_eyre::Result<()> {
+) -> color_eyre::Result<String> {
     let pallet_name = pallet_metadata.name.as_str();
     let trailing_args = command.trailing_args.join(" ");
     let trailing_args = trailing_args.trim();
 
     let Some(storage_metadata) = &pallet_metadata.storage else {
-        println!("The \"{pallet_name}\" pallet has no storage entries.");
-        return Ok(());
+        return Ok(format!("The \"{pallet_name}\" pallet has no storage entries."));
     };
 
     // if no storage entry specified, show user the calls to choose from:
     let Some(entry_name) = command.storage_entry else {
         let storage_entries = print_available_storage_entries(storage_metadata, pallet_name);
-        println!("Usage:\n    subxt explore {pallet_name} storage <STORAGE_ENTRY>\n        view details for a specific storage entry\n\n{storage_entries}");
-        return Ok(());
+        return Ok(format!("Usage:\n    subxt explore {pallet_name} storage <STORAGE_ENTRY>\n        view details for a specific storage entry\n\n{storage_entries}"));
     };
 
     // if specified call storage entry wrong, show user the storage entries to choose from (but this time as an error):
@@ -60,13 +58,12 @@ pub(crate) async fn explore_storage(
 
     // only inform user about usage if a key can be provided:
     if key_ty_id.is_some() && trailing_args.is_empty() {
-        write!(
-            output,
-            "Usage:\n    subxt explore {pallet_name} storage {entry_name} <KEY_VALUE>\n\n"
-        )?;
+        writeln!(output, "Usage:")?;
+        writeln!(output, "    subxt explore {pallet_name} storage {entry_name} <KEY_VALUE>\n\n")?;
+        return Ok(output);
     }
 
-    let docs_string = print_docs_with_indent(&storage.docs, 4);
+    let docs_string = print_first_paragraph_with_indent(&storage.docs, 4);
     if !docs_string.is_empty() {
         write!(output, "Description:\n{docs_string}")?;
     }
@@ -77,15 +74,16 @@ pub(crate) async fn explore_storage(
         key_ty_description = with_indent(key_ty_description, 4);
         let mut key_ty_examples = print_type_examples(&key_ty_id, metadata.types(), "<KEY_VALUE>")?;
         key_ty_examples = with_indent(key_ty_examples, 4);
-        write!(
+        writeln!(
             output,
-            "\n\nThe <KEY_VALUE> has the following shape:\n    {key_ty_description}\n\n{}",
+            "\nThe <KEY_VALUE> has the following shape:{}",
             &key_ty_examples[4..]
         )?;
+        writeln!(output, "{key_ty_description}\n\n")?;
     } else {
-        write!(
+        writeln!(
             output,
-            "\n\nThe constant can be accessed without providing a key."
+            "\nThe constant can be accessed without providing a key."
         )?;
     }
 
@@ -127,7 +125,6 @@ pub(crate) async fn explore_storage(
     if key_ty_id.is_none() && !trailing_args.is_empty() {
         write!(output, "\n\nWarning: You submitted the following value as a key, but it will be ignored, because the storage entry does not require a key: \"{}\"", trailing_args)?;
     }
-    println!("{output}");
 
     // construct and submit the storage entry request if either no key is needed or som key was provided as a scale value
     if key_ty_id.is_none() || !key_scale_values.is_empty() {
@@ -149,10 +146,13 @@ pub(crate) async fn explore_storage(
         let value = decoded_value_thunk.to_value()?;
         let mut value_string = scale_value::stringify::to_string(&value);
         value_string = with_indent(value_string, 4);
-        println!("\nThe value of the storage entry is:\n{value_string}");
+        write!(
+            output,
+            "\nThe value of the storage entry is:\n{value_string}"
+        )?;
     }
 
-    Ok(())
+    Ok(output)
 }
 
 fn print_available_storage_entries(
