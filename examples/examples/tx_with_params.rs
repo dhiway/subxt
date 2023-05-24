@@ -1,18 +1,18 @@
 use sp_keyring::AccountKeyring;
-use subxt::config::polkadot::{Era, PlainTip, PolkadotExtrinsicParamsBuilder as Params};
-use subxt::{tx::PairSigner, OnlineClient, PolkadotConfig};
+use subxt::config::cord::{Era, PlainTip, CordExtrinsicParamsBuilder as Params};
+use subxt::{tx::PairSigner, OnlineClient, config::CordConfig};
 
-#[subxt::subxt(runtime_metadata_path = "../artifacts/polkadot_metadata_small.scale")]
-pub mod polkadot {}
+#[subxt::subxt(runtime_metadata_path = "../artifacts/cord_new.scale")]
+pub mod cord {}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a new API client, configured to talk to Polkadot nodes.
-    let api = OnlineClient::<PolkadotConfig>::new().await?;
+    let api = OnlineClient::<CordConfig>::new().await?;
 
     // Build a balance transfer extrinsic.
     let dest = AccountKeyring::Bob.to_account_id().into();
-    let tx = polkadot::tx().balances().transfer(dest, 10_000);
+    let tx = cord::tx().balances().transfer(dest, 10_000);
 
     // Configure the transaction parameters; for Polkadot the tip and era:
     let tx_params = Params::new()

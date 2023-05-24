@@ -11,6 +11,7 @@
 pub mod extrinsic_params;
 pub mod polkadot;
 pub mod substrate;
+pub mod cord;
 
 use codec::{Decode, Encode};
 use core::fmt::Debug;
@@ -19,7 +20,7 @@ use serde::{de::DeserializeOwned, Serialize};
 pub use extrinsic_params::ExtrinsicParams;
 pub use polkadot::PolkadotConfig;
 pub use substrate::SubstrateConfig;
-
+pub use cord::CordConfig;
 /// Runtime types.
 // Note: the 'static bound isn't strictly required, but currently deriving TypeInfo
 // automatically applies a 'static bound to all generic types (including this one),
